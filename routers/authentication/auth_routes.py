@@ -62,7 +62,7 @@ async def user_login(form_data: auth_form, db: db_dependency, mode: str = Query(
                                     expires_in=timedelta(minutes=30))
         return Token(access_token=token, token_type="bearer")
 
-    except HTTPException as e:
+    except HTTPException as e:  
         raise e
 
     except Exception as e:
