@@ -14,47 +14,18 @@ from schemas.users import User
 from typing import Annotated, List
 from uuid import UUID
 from sqlalchemy.future import select
-from schemas.roles import Role
 
 router = APIRouter(prefix="/user")
 
 
-@router.post("/add", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(user_data: UserRequest, db: db_dependency):
-    """Add a New User with Access Level 0."""
-    try:
-        stmt = select(Role).where(Role.level == 0)
-        result = await db.execute(stmt)
-        role = result.scalar_one_or_none()
-        
-        new_user = User(
-            username=user_data.username,
-            email=user_data.email,
-            password=bcrypt_context.hash(user_data.password),
-            role_id=role.id)
-
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        return UserRead.model_validate(new_user)
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Error Creating Public User: {str(e)}")
-
-
 @router.post("/admin/add", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def create_internal_user(user_data: UserRequest,
-                               db: db_dependency,
-                               current_user: Annotated[dict, Depends(require_role(2))]):
+                               db: db_dependency):
     """Add a New User with Certain Access Levels (Internal Use Only)."""
     try:
         if not user_data.role_id in [1, 2, 3]:
-            raise 
-        
+            raise
+
         new_user = User(
             username=user_data.username,
             password=bcrypt_context.hash(user_data.password),
@@ -85,7 +56,7 @@ async def get_user_from_identifier(identifier: str | UUID,
         if current_user is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail="Could Not Validate User")
-            
+
         stmt = select(User)
         if from_username:
             stmt = stmt.where(User.username == identifier)
@@ -93,13 +64,13 @@ async def get_user_from_identifier(identifier: str | UUID,
             stmt = stmt.where(User.email == identifier)
         else:
             stmt = stmt.where(User.id == identifier)
-        
+
         result = await db.execute(stmt)
-        user = result.scalar_one_or_none()        
+        user = result.scalar_one_or_none()
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="User Not Found")
-            
+
         return UserRead.model_validate(user)
 
     except HTTPException as e:
@@ -141,7 +112,8 @@ async def modify_user(updated_user: UserPublicUpdateRequest,
                 detail="Could Not Validate User"
             )
 
-        stmt = select(User).where(User.id == current_user["id"], User.username == current_user["username"])
+        stmt = select(User).where(
+            User.id == current_user["id"], User.username == current_user["username"])
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
 

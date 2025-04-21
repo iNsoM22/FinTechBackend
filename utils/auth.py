@@ -33,6 +33,8 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 auth_form = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 # Util Function for Email String Check
+
+
 def is_email(value: str) -> bool:
     email_pattern = r"[^@]+@[^@]+\.[^@]+"
     return re.fullmatch(email_pattern, value) is not None
@@ -46,23 +48,23 @@ async def authenticate_user(identifier: str, password: str, db: AsyncSession) ->
             stmt = stmt.where(User.email == identifier)
         else:
             stmt = stmt.where(User.username == identifier)
-        
+            
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
-        
+
         if not user:
             return None
 
         if not bcrypt_context.verify(password, user.password):
             return None
-        
+
         return user
 
     except Exception as e:
         return None
 
 
-# Util Function to Provide Access Tokens to the Users When Signing 
+# Util Function to Provide Access Tokens to the Users When Signing
 def create_access_token(username: str, user_id: UUID, role: str, expires_in: timedelta) -> str:
     encode = {
         "sub": username,
@@ -106,7 +108,7 @@ def require_role(min_level: int):
                 detail="User Role Information is Missing"
             )
         user_level = ROLE_LEVELS.get(user["role"])
-        
+
         if user_level is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Invalid Role Provided")
@@ -117,7 +119,7 @@ def require_role(min_level: int):
                 detail="Insufficient Permissions, Requires Higher Level Privelledges"
             )
         return user
-    
+
     return role_dependency
 
 

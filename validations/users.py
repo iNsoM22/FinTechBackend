@@ -42,6 +42,10 @@ class UserRequest(UserBase):
         max_length=100,
         description="Password for the User Account"
     )
+    role_id: int = Field(
+        default=1,
+        description="Role ID of the User"
+    )
 
 
 # Request Model for User Account Login (can use either Username or Email)
@@ -116,4 +120,3 @@ class UserPublicResponse(UserBase):
         ...,
         description="Named Position Role of the User"
     )
-
