@@ -3,14 +3,20 @@ from utils.db import db_dependency
 from validations.users import (
     Token,
     UserPublicResponse,
+    UserRead,
+    UserRequest
 )
 from utils.auth import (
+    bcrypt_context,
     auth_form,
     authenticate_user,
     create_access_token,
     user_dependency,
 )
 from datetime import timedelta
+from schemas.roles import Role
+from schemas.users import User
+from sqlalchemy.future import select
 
 
 router = APIRouter(prefix="/auth")
@@ -58,3 +64,30 @@ async def user_login(form_data: auth_form, db: db_dependency):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail=f"Login Failed: {str(e)}")
+        
+        
+@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+async def create_user(user_data: UserRequest, db: db_dependency):
+    """Add a New User with Access Level 0."""
+    try:
+        stmt = select(Role).where(Role.level == 0)
+        result = await db.execute(stmt)
+        role = result.scalar_one_or_none()
+        
+        new_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            password=bcrypt_context.hash(user_data.password),
+            role_id=role.id)
+
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        return UserRead.model_validate(new_user)
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Error Creating Public User: {str(e)}")
