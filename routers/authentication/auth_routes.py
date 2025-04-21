@@ -13,7 +13,7 @@ from utils.auth import (
 from datetime import timedelta
 
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth")
 
 
 @router.get("/me", response_model=UserPublicResponse, status_code=status.HTTP_200_OK)

@@ -66,7 +66,7 @@ async def authenticate_user(identifier: str, password: str, db: AsyncSession) ->
 def create_access_token(username: str, user_id: UUID, role: str, expires_in: timedelta) -> str:
     encode = {
         "sub": username,
-        "id": user_id,
+        "id": str(user_id),
         "pos": role,
     }
     expires = datetime.now(timezone.utc) + expires_in
@@ -88,7 +88,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]) -> dict:
 
         return {
             "username": username,
-            "id": user_id,
+            "id": UUID(user_id),
             "role": role,
         }
 

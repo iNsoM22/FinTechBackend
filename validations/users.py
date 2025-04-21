@@ -107,12 +107,9 @@ class UserPublicResponse(UserBase):
         ...,
         description="Unique Identifier for the User"
     )
-    email: EmailStr = Field(
-        max_length=40,
-        description="Email of the User"
-    )
     role_id: int = Field(
         exclude=True,
+        default=0,
         description="Role ID of the User"
     )
     role: str = Field(

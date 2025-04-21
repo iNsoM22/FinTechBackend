@@ -11,13 +11,12 @@ from utils.auth import require_role
 from sqlalchemy.future import select
 
 
-router = APIRouter()
+router = APIRouter(prefix="/role")
 
 
-@router.post("/role/add", response_model=List[RoleResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/add", response_model=List[RoleResponse], status_code=status.HTTP_201_CREATED)
 async def create_role(roles: List[RoleRequest],
-                      db: db_dependency,
-                      current_user: Annotated[dict, Depends(require_role(3))]):
+                      db: db_dependency):
     """Create a New Role."""
     try:
         new_roles = [Role(**role.model_dump()) for role in roles]
@@ -35,7 +34,7 @@ async def create_role(roles: List[RoleRequest],
 
 
 
-@router.get("/role/all", response_model=List[RoleResponse], status_code=status.HTTP_200_OK)
+@router.get("/all", response_model=List[RoleResponse], status_code=status.HTTP_200_OK)
 async def get_roles(db: db_dependency):
     """Get Roles Details along with their Associated IDs."""
     try:
@@ -53,10 +52,10 @@ async def get_roles(db: db_dependency):
 
 
 
-@router.put("/role/mod/", response_model=List[RoleResponse], status_code=status.HTTP_202_ACCEPTED)
+@router.put("/mod/", response_model=List[RoleResponse], status_code=status.HTTP_202_ACCEPTED)
 async def update_role(updated_data: List[RoleUpdateRequest], 
                       db: db_dependency,
-                      current_user: Annotated[dict, Depends(require_role(3))]):
+                      current_user: Annotated[dict, Depends(require_role(2))]):
     """Update Existing Roles."""
     try:
         roles_to_update = {role.id: role for role in updated_data}
@@ -93,10 +92,10 @@ async def update_role(updated_data: List[RoleUpdateRequest],
 
 
 
-@router.delete("/role/del", status_code=status.HTTP_202_ACCEPTED)
+@router.delete("/del", status_code=status.HTTP_202_ACCEPTED)
 async def delete_role(roles_for_deletion: List[RoleDeleteRequest],
                       db: db_dependency,
-                      current_user: Annotated[dict, Depends(require_role(3))]):
+                      current_user: Annotated[dict, Depends(require_role(2))]):
     """Delete Roles, Can be Done only by Admin Account."""
     try:
         role_ids_to_delete = [role.id for role in roles_for_deletion]
