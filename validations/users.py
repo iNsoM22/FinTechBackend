@@ -23,9 +23,9 @@ class UserBase(BaseModel):
         max_length=20,
         description="Username to be used in the Account"
     )
-    level: int = Field(
-        default=1,
-        description="Role Level of the User (Requires Special Privileges to Use a High Level)"
+    role_id: int = Field(
+        ...,
+        description="Role ID of the User"
     )
 
     model_config = ConfigDict(from_attributes=True)
@@ -111,3 +111,12 @@ class UserPublicResponse(UserBase):
         max_length=40,
         description="Email of the User"
     )
+    role_id: int = Field(
+        exclude=True,
+        description="Role ID of the User"
+    )
+    role: str = Field(
+        ...,
+        description="Named Position Role of the User"
+    )
+

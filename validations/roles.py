@@ -24,6 +24,10 @@ class RoleRequest(RoleBase):
 
 # Request Model for Role Updation
 class RoleUpdateRequest(BaseModel):
+    id: int = Field(
+        ...,
+        description="Role ID to delete"
+    )
     level: Optional[int] = Field(
         None,
         description="Updated Role Level"
