@@ -73,6 +73,8 @@ async def transfer_money(transfer_data: TransactionRequest,
         transaction = Transaction(
             sender_account_id=sender.id,
             receiver_account_id=receiver.id,
+            sender_username=current_user["username"],
+            receiver_username=transfer_data.receiver_username,
             transfer_amount=transfer_data.transfer_amount,
             made_at=datetime.now(timezone.utc),
             status=ValidTransactionStatus.COMPLETED
@@ -84,14 +86,7 @@ async def transfer_money(transfer_data: TransactionRequest,
         db.add(transaction)
         await db.commit()
         await db.refresh(transaction)
-        return TransactionResponse(id=transaction.id,
-                                   receiver_account_id=transaction.receiver_account_id,
-                                   sender_account_id=transaction.sender_account_id,
-                                   receiver_username=transfer_data.receiver_username,
-                                   sender_username=current_user["username"],
-                                   made_at=transaction.made_at,
-                                   status=transaction.status,
-                                   transfer_amount=transaction.transfer_amount)
+        return TransactionResponse.model_validate(transaction)
 
     except HTTPException as e:
         raise e
@@ -101,28 +96,25 @@ async def transfer_money(transfer_data: TransactionRequest,
 
 
 # Get Transaction History
-@router.get("/{account_id}/transactions", response_model=List[TransactionResponse], status_code=status.HTTP_200_OK)
-async def get_transactions(account_id: UUID,
-                           db: db_dependency,
+@router.get("/transactions", response_model=List[TransactionResponse], status_code=status.HTTP_200_OK)
+async def get_transactions(db: db_dependency,
                            current_user: user_dependency,
                            limit: int = Query(50, ge=1, le=100),
                            offset: int = Query(0, ge=0),
                            date_from: Optional[datetime] = Query(None),
                            date_till: Optional[datetime] = Query(None)):
     try:
-        stmt = select(Account).where(Account.id == account_id,
-                                     Account.user_id == current_user["id"])
+        stmt = select(Account).where(Account.user_id == current_user["id"])
         result = await db.execute(stmt)
         account = result.scalar_one_or_none()
-
         if not account:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Account Not Found")
 
         stmt_tx = select(Transaction).where(
             or_(
-                Transaction.sender_account_id == account_id,
-                Transaction.receiver_account_id == account_id
+                Transaction.sender_account_id == account.id,
+                Transaction.receiver_account_id == account.id
             )
         )
 

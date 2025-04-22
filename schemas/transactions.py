@@ -1,4 +1,4 @@
-from sqlalchemy import Float, DateTime, ForeignKey, UUID, Enum as SQLAEnum, func
+from sqlalchemy import Float, DateTime, ForeignKey, UUID, String, Enum as SQLAEnum, func
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
 from uuid import uuid4
@@ -33,7 +33,20 @@ class Transaction(Base):
         nullable=False,
         comment="Foreign key to the receiver's Account"
     )
-
+    
+    sender_username: Mapped[str] = mapped_column(
+        String(256), 
+        nullable=False,
+        comment="Username of the Sender"
+    )
+    
+    receiver_username: Mapped[str] = mapped_column(
+        String(256), 
+        nullable=False,
+        comment="Username of the Receiver"
+    )
+    
+    
     transfer_amount: Mapped[float] = mapped_column(
         Float,
         default=0.0,

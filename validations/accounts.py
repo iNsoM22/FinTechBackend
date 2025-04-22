@@ -94,12 +94,12 @@ class TransactionBase(BaseModel):
         ...,
         description="Receiver's Account ID"
     )
-    sender_username: str = Field(
-        ...,
+    sender_username: Optional[str] = Field(
+        None,
         description="Sender's username"
     )
-    receiver_username: str = Field(
-        ...,
+    receiver_username: Optional[str] = Field(
+        None,
         description="Receiver's username"
     )
     transfer_amount: float = Field(
