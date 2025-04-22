@@ -1,10 +1,9 @@
 from fastapi import APIRouter, status, HTTPException, Query
 from utils.db import db_dependency
 from utils.auth import user_dependency
-from validations.accounts import AccountUpdateRequest, TransactionRequest, AccountResponse, TransactionResponse
+from validations.accounts import (
+    AccountUpdateRequest, TransactionRequest, AccountResponse, TransactionResponse, AccountBalanceResponse)
 from schemas.accounts import Account
-from schemas.subscriptions import Subscription, ValidSubscriptionStatus
-from validations.accounts import SubscriptionResponse
 from schemas.transactions import Transaction, ValidTransactionStatus
 from sqlalchemy.future import select
 from sqlalchemy import or_
@@ -23,7 +22,8 @@ async def update_account(account_id: UUID,
                          db: db_dependency,
                          current_user: user_dependency):
     try:
-        stmt = select(Account).where(Account.id == account_id, Account.user_id == current_user["id"])
+        stmt = select(Account).where(Account.id == account_id,
+                                     Account.user_id == current_user["id"])
         result = await db.execute(stmt)
         account = result.scalar_one_or_none()
 
@@ -54,27 +54,25 @@ async def transfer_money(transfer_data: TransactionRequest,
                          db: db_dependency,
                          current_user: user_dependency):
     try:
-        stmt_sender = select(Account).where(Account.id == transfer_data.sender_account_id,
-                                            Account.user_id == current_user["id"])
+        stmt_sender = select(Account).where(Account.user_id == current_user["id"])
         result_sender = await db.execute(stmt_sender)
         sender = result_sender.scalar_one_or_none()
 
         if not sender or sender.balance < transfer_data.transfer_amount:
-            raise HTTPException(400, detail="Insufficient Balance or Invalid Sender Account")
+            raise HTTPException(
+                400, detail="Insufficient Balance or Invalid Sender Account")
 
-        stmt_receiver = select(Account).where(Account.id == transfer_data.receiver_account_id)
+        stmt_receiver = select(Account).where(
+            Account.id == transfer_data.receiver_account_id)
         result_receiver = await db.execute(stmt_receiver)
         receiver = result_receiver.scalar_one_or_none()
-
         if not receiver:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Receiver Account Not Found")
 
         transaction = Transaction(
-            sender_account_id=transfer_data.sender_account_id,
-            receiver_account_id=transfer_data.receiver_account_id,
-            sender_username=transfer_data.sender_username,
-            receiver_username=transfer_data.receiver_username,
+            sender_account_id=sender.id,
+            receiver_account_id=receiver.id,
             transfer_amount=transfer_data.transfer_amount,
             made_at=datetime.now(timezone.utc),
             status=ValidTransactionStatus.COMPLETED
@@ -86,8 +84,14 @@ async def transfer_money(transfer_data: TransactionRequest,
         db.add(transaction)
         await db.commit()
         await db.refresh(transaction)
-
-        return TransactionResponse.model_validate(transaction)
+        return TransactionResponse(id=transaction.id,
+                                   receiver_account_id=transaction.receiver_account_id,
+                                   sender_account_id=transaction.sender_account_id,
+                                   receiver_username=transfer_data.receiver_username,
+                                   sender_username=current_user["username"],
+                                   made_at=transaction.made_at,
+                                   status=transaction.status,
+                                   transfer_amount=transaction.transfer_amount)
 
     except HTTPException as e:
         raise e
@@ -106,7 +110,8 @@ async def get_transactions(account_id: UUID,
                            date_from: Optional[datetime] = Query(None),
                            date_till: Optional[datetime] = Query(None)):
     try:
-        stmt = select(Account).where(Account.id == account_id, Account.user_id == current_user["id"])
+        stmt = select(Account).where(Account.id == account_id,
+                                     Account.user_id == current_user["id"])
         result = await db.execute(stmt)
         account = result.scalar_one_or_none()
 
@@ -126,7 +131,8 @@ async def get_transactions(account_id: UUID,
         if date_till:
             stmt_tx = stmt_tx.where(Transaction.made_at <= date_till)
 
-        stmt_tx = stmt_tx.order_by(Transaction.made_at.desc()).offset(offset).limit(limit)
+        stmt_tx = stmt_tx.order_by(
+            Transaction.made_at.desc()).offset(offset).limit(limit)
 
         result_tx = await db.execute(stmt_tx)
         transactions = result_tx.scalars().all()
@@ -146,7 +152,8 @@ async def get_account_details(account_id: UUID,
                               db: db_dependency,
                               current_user: user_dependency):
     try:
-        stmt = select(Account).where(Account.id == account_id, Account.user_id == current_user["id"])
+        stmt = select(Account).where(Account.id == account_id,
+                                     Account.user_id == current_user["id"])
         result = await db.execute(stmt)
         account = result.scalar_one_or_none()
 
@@ -158,19 +165,17 @@ async def get_account_details(account_id: UUID,
 
     except HTTPException as e:
         raise e
-    
+
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail=f"Error Fetching Account Details: {str(e)}")
 
 
 # Get Current Account Balance
-@router.get("/balance/{account_id}", response_model=AccountResponse, status_code=status.HTTP_200_OK)
-async def get_balance(account_id: UUID,
-                              db: db_dependency,
-                              current_user: user_dependency):
+@router.get("/balance/me", response_model=AccountBalanceResponse, status_code=status.HTTP_200_OK)
+async def get_balance(db: db_dependency, current_user: user_dependency):
     try:
-        stmt = select(Account).where(Account.id == account_id, Account.user_id == current_user["id"])
+        stmt = select(Account).where(Account.user_id == current_user["id"])
         result = await db.execute(stmt)
         account = result.scalar_one_or_none()
 
@@ -178,11 +183,11 @@ async def get_balance(account_id: UUID,
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Account Not Found")
 
-        return AccountResponse.model_validate(account).model_dump_json(include=["balance", "currency"])
+        return AccountBalanceResponse.model_validate(account)
 
     except HTTPException as e:
         raise e
-    
+
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail=f"Error Fetching Account Details: {str(e)}")

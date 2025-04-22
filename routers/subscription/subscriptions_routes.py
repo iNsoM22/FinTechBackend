@@ -89,7 +89,7 @@ async def filter_subscriptions(db: db_dependency,
 
 
 # Get Current Account Active Subscription Status
-@router.get("/me", response_model=SubscriptionResponse, status_code=status.HTTP_200_OK)
+@router.get("/me", status_code=status.HTTP_200_OK)
 async def get_active_subscription(db: db_dependency, current_user: user_dependency):
     try:
         stmt = select(Subscription).where(Subscription.user_id == current_user["id"],
@@ -101,7 +101,10 @@ async def get_active_subscription(db: db_dependency, current_user: user_dependen
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Subscription Not Found")
 
-        return SubscriptionResponse.model_validate(subscription)
+        return {
+            "user": current_user["username"],
+            "subscription": SubscriptionResponse.model_validate(subscription)
+            }
 
     except HTTPException as e:
         raise e

@@ -7,6 +7,7 @@ from validations.payments import CheckoutRequest, CheckoutSessionResponse, Webho
 import stripe
 from dotenv import load_dotenv
 import os
+from datetime import datetime
 from schemas.accounts import Account, ValidAccountStatus
 from sqlalchemy.future import select
 
@@ -34,7 +35,7 @@ async def create_checkout_session(data: CheckoutRequest,
     stmt = select(User).where(User.id == current_user["id"])
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -42,15 +43,16 @@ async def create_checkout_session(data: CheckoutRequest,
         )
 
     try:
-        stmt = select(Subscription).where(Subscription.user_id == user.id).order_by(Subscription.ended_at.desc())
+        stmt = select(Subscription).where(Subscription.user_id ==
+                                          user.id).order_by(Subscription.ended_at.desc())
         results = await db.execute(stmt)
         previous_subscriptions = results.scalars().all()
-        
+
         for prev_subs in previous_subscriptions:
             if prev_subs.status == ValidSubscriptionStatus.ACTIVE:
                 raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                                     detail="User Already has an Active Subscription")
-                
+
         checkout_session = stripe.checkout.Session.create(
             customer_email=user.email,
             line_items=[{
@@ -103,29 +105,33 @@ async def stripe_webhook(request: Request, db: db_dependency):
 
             if user:
                 subscription = Subscription(
-                    customer_id=user.id,
+                    user_id=user.id,
                     source_id=invoice.get("subscription"),
                     currency=invoice.get("currency"),
                     amount=invoice.get("amount_paid") / 100,
-                    started_at=invoice["lines"]["data"][0]["period"]["start"],
-                    ended_at=invoice["lines"]["data"][0]["period"]["end"],
+                    started_at=datetime.fromtimestamp(
+                        invoice["lines"]["data"][0]["period"]["start"]),
+                    ended_at=datetime.fromtimestamp(
+                        invoice["lines"]["data"][0]["period"]["end"]),
                     status=ValidSubscriptionStatus.ACTIVE)
-                
+
                 db.add(subscription)
-            
+
             stmt = select(Account).where(Account.user_id == user.id)
             result = await db.execute(stmt)
             account = result.scalar_one_or_none()
             if not account:
                 account = Account(user_id=user.id,
                                   currency=subscription.currency,
-                                  balance=500 if invoice.get("amount_paid") <= 5 else 2000,
+                                  balance=500 if invoice.get(
+                                      "amount_paid") <= 5 else 2000,
                                   status=ValidAccountStatus.ACTIVE)
                 db.add(account)
-            
+
             else:
-                account.balance += 500 if invoice.get("amount_paid") <= 5 else 2000
-            
+                account.balance += 500 if invoice.get(
+                    "amount_paid") <= 5 else 2000
+
             await db.commit()
 
     elif event["type"] == "customer.subscription.deleted":

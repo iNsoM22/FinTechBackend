@@ -23,7 +23,7 @@ class Account(Base):
         comment="Primary key for Accounts"
     )
 
-    user_id: Mapped[int] = mapped_column(
+    user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         comment="Foreign key to the Users Table"

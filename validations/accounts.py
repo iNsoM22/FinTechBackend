@@ -9,7 +9,7 @@ from schemas.subscriptions import ValidSubscriptionStatus
 
 # Base Schema for Account
 class AccountBase(BaseModel):
-    user_id: int = Field(
+    user_id: UUID = Field(
         ...,
         description="User ID who owns this Account"
     )
@@ -55,6 +55,24 @@ class AccountResponse(AccountBase):
         ..., description="Timestamp of Last Balance Update"
     )
 
+class AccountBalanceResponse(BaseModel):
+    currency: str = Field(
+        default="USD",
+        description="Currency type for the Account"
+    )
+    balance: float = Field(
+        default=0.0,
+        description="Current Balance in the Account"
+    )
+    last_updated: datetime = Field(
+        ...,
+        description="Timestamp of Last Balance Update"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+    
 
 # # Response Model with Transactions
 # class AccountResponseWithTransactions(AccountResponse):
@@ -93,8 +111,22 @@ class TransactionBase(BaseModel):
 
 
 # Request Model for Money Transfer
-class TransactionRequest(TransactionBase):
-    pass
+class TransactionRequest(BaseModel):
+    receiver_account_id: UUID = Field(
+        ...,
+        description="Receiver's Account ID"
+    )
+    receiver_username: str = Field(
+        ...,
+        description="Receiver's username"
+    )
+    transfer_amount: float = Field(
+        ...,
+        description="Amount to be Transferred"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 # Response Model for Money Transfer

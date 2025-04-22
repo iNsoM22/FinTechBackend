@@ -48,7 +48,7 @@ class Transaction(Base):
         comment="Time when the Transaction was made"
     )
 
-    status: Mapped[ValidTransactionStatus] = mapped_column(  # Fixed Enum
+    status: Mapped[ValidTransactionStatus] = mapped_column(
         SQLAEnum(ValidTransactionStatus, name="valid_transaction_status"),
         default=ValidTransactionStatus.PROCESSING,
         nullable=False,
