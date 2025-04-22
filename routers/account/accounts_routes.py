@@ -3,6 +3,8 @@ from utils.db import db_dependency
 from utils.auth import user_dependency
 from validations.accounts import AccountUpdateRequest, TransactionRequest, AccountResponse, TransactionResponse
 from schemas.accounts import Account
+from schemas.subscriptions import Subscription, ValidSubscriptionStatus
+from validations.accounts import SubscriptionResponse
 from schemas.transactions import Transaction, ValidTransactionStatus
 from sqlalchemy.future import select
 from sqlalchemy import or_
@@ -94,7 +96,7 @@ async def transfer_money(transfer_data: TransactionRequest,
                             detail=f"Error Processing Transfer: {str(e)}")
 
 
-# 📄 3. Get Transaction History
+# Get Transaction History
 @router.get("/{account_id}/transactions", response_model=List[TransactionResponse], status_code=status.HTTP_200_OK)
 async def get_transactions(account_id: UUID,
                            db: db_dependency,
@@ -164,7 +166,7 @@ async def get_account_details(account_id: UUID,
 
 # Get Current Account Balance
 @router.get("/balance/{account_id}", response_model=AccountResponse, status_code=status.HTTP_200_OK)
-async def get_account_details(account_id: UUID,
+async def get_balance(account_id: UUID,
                               db: db_dependency,
                               current_user: user_dependency):
     try:
