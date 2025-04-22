@@ -10,7 +10,7 @@ load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 
-router = APIRouter(prefix="/payment", tags=["Payment"])
+router = APIRouter(prefix="/plan")
 
 
 @router.get("/products", response_model=List[StripeProduct], status_code=status.HTTP_200_OK)
@@ -23,14 +23,14 @@ async def get_stripe_products():
         for product in products.auto_paging_iter():
             prices = stripe.Price.list(product=product.id, active=True)
             price_data = []
-            
+
             for price in prices.auto_paging_iter():
                 price_model = StripePrice(id=price.id,
                                           unit_amount=price.unit_amount,
                                           currency=price.currency,
                                           recurring=price.recurring)
                 price_data.append(price_model)
-                
+
             product_model = StripeProduct(id=product.id,
                                           name=product.name,
                                           description=product.description,
