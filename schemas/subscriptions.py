@@ -1,8 +1,16 @@
-from sqlalchemy import String, Float, DateTime, ForeignKey, UUID
+from sqlalchemy import String, Float, DateTime, ForeignKey, UUID, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 from uuid import uuid4
 from .users import User
+from enum import Enum
+
+
+class ValidSubscriptionStatus(str, Enum):
+    PROCESSING = "Processing"
+    ACTIVE = "Active"
+    CANCELED = "Cancelled"
+    ENDED = "Ended"
 
 
 class Subscription(Base):
@@ -57,9 +65,10 @@ class Subscription(Base):
         comment="Time at which Subscription was Canceled"
     )
 
-    status: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
+    status: Mapped[ValidSubscriptionStatus] = mapped_column(
+        SQLEnum(ValidSubscriptionStatus, name="valid_subscription_status"),
+        default=ValidSubscriptionStatus.PROCESSING,
+        nullable=False,
         comment="Current Status of the Subscription"
     )
 

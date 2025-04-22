@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, status, Request
 from utils.auth import user_dependency
 from utils.db import db_dependency
-from schemas.subscriptions import Subscription
+from schemas.subscriptions import Subscription, ValidSubscriptionStatus
 from schemas.users import User
 from validations.payments import CheckoutRequest, CheckoutSessionResponse, WebhookResponse
 import stripe
 from dotenv import load_dotenv
 import os
+from schemas.accounts import Account, ValidAccountStatus
 from sqlalchemy.future import select
 
 load_dotenv()
@@ -41,7 +42,15 @@ async def create_checkout_session(data: CheckoutRequest,
         )
 
     try:
+        stmt = select(Subscription).where(Subscription.user_id == user.id).order_by(Subscription.ended_at.desc())
+        results = await db.execute(stmt)
+        previous_subscriptions = results.scalars().all()
         
+        for prev_subs in previous_subscriptions:
+            if prev_subs.status == ValidSubscriptionStatus.ACTIVE:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                    detail="User Already has an Active Subscription")
+                
         checkout_session = stripe.checkout.Session.create(
             customer_email=user.email,
             line_items=[{
@@ -100,10 +109,24 @@ async def stripe_webhook(request: Request, db: db_dependency):
                     amount=invoice.get("amount_paid") / 100,
                     started_at=invoice["lines"]["data"][0]["period"]["start"],
                     ended_at=invoice["lines"]["data"][0]["period"]["end"],
-                    status="active"
-                )
+                    status=ValidSubscriptionStatus.ACTIVE)
+                
                 db.add(subscription)
-                await db.commit()
+            
+            stmt = select(Account).where(Account.user_id == user.id)
+            result = await db.execute(stmt)
+            account = result.scalar_one_or_none()
+            if not account:
+                account = Account(user_id=user.id,
+                                  currency=subscription.currency,
+                                  balance=500 if invoice.get("amount_paid") <= 5 else 2000,
+                                  status=ValidAccountStatus.ACTIVE)
+                db.add(account)
+            
+            else:
+                account.balance += 500 if invoice.get("amount_paid") <= 5 else 2000
+            
+            await db.commit()
 
     elif event["type"] == "customer.subscription.deleted":
         subscription_obj = event["data"]["object"]
@@ -115,7 +138,7 @@ async def stripe_webhook(request: Request, db: db_dependency):
         subscription = result.scalar_one_or_none()
 
         if subscription:
-            subscription.status = "canceled"
+            subscription.status = ValidSubscriptionStatus.CANCELED
             await db.commit()
 
     return WebhookResponse(status="success")
