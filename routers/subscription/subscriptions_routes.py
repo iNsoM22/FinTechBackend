@@ -101,10 +101,7 @@ async def get_active_subscription(db: db_dependency, current_user: user_dependen
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Subscription Not Found")
 
-        return {
-            "user": current_user["username"],
-            "subscription": SubscriptionResponse.model_validate(subscription)
-            }
+        return SubscriptionResponse.model_validate(subscription)
 
     except HTTPException as e:
         raise e

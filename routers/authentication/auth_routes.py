@@ -14,7 +14,7 @@ from utils.auth import (
     user_dependency,
 )
 from datetime import timedelta
-from schemas.roles import Role
+from schemas.roles import Role, ValidRoles
 from schemas.users import User
 from sqlalchemy.future import select
 
@@ -50,19 +50,18 @@ async def user_login(form_data: auth_form, db: db_dependency, mode: str = Query(
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail="Could Not Validate User")
-        
-            
+
         if user.role.position != mode:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail="Invalid Credentials or Mode")
-            
+
         token = create_access_token(username=user.username,
                                     user_id=user.id,
                                     role=user.role.position,
                                     expires_in=timedelta(minutes=30))
         return Token(access_token=token, token_type="bearer")
 
-    except HTTPException as e:  
+    except HTTPException as e:
         raise e
 
     except Exception as e:
