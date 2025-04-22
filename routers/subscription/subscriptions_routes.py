@@ -59,7 +59,8 @@ async def update_subscription(subscription_id: UUID,
 @router.get("/filter", response_model=List[SubscriptionResponse], status_code=status.HTTP_200_OK)
 async def filter_subscriptions(db: db_dependency,
                                current_user: Annotated[dict, Depends(require_role(2))],
-                               status: Optional[ValidSubscriptionStatus] = Query(None),
+                               status: Optional[ValidSubscriptionStatus] = Query(
+                                   None),
                                start_date: Optional[datetime] = Query(None),
                                end_date: Optional[datetime] = Query(None)):
     try:

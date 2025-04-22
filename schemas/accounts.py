@@ -62,9 +62,7 @@ class Account(Base):
     # Relationships
     ################
     
-    user: Mapped["User"] = relationship(
-        comment="Relationship to the User"
-    )
+    user: Mapped["User"] = relationship()
     
     sent_transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction",

@@ -114,7 +114,7 @@ class TransactionResponse(TransactionBase):
 
 
 class SubscriptionBase(BaseModel):
-    user_id: int = Field(
+    user_id: UUID = Field(
         ...,
         description="ID of the user who owns the Subscription"
     )
@@ -146,6 +146,8 @@ class SubscriptionBase(BaseModel):
         ...,
         description="Current Status of the Subscription"
     )
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SubscriptionResponse(SubscriptionBase):
