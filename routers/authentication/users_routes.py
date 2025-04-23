@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, HTTPException, Depends, Query
 from utils.db import db_dependency
 from validations.users import (
     UserRequest,
@@ -84,8 +84,8 @@ async def get_user_from_identifier(identifier: str | UUID,
 @router.get("/all", response_model=List[UserRead], status_code=status.HTTP_200_OK)
 async def get_all_users(db: db_dependency,
                         current_user: Annotated[dict, Depends(require_role(2))],
-                        limit: int = 50,
-                        offset: int = 0):
+                        limit: int = Query(50, ge=1, le=100),
+                        offset: int = Query(0, ge=0),):
     try:
         stmt = select(User).offset(offset).limit(limit)
         result = await db.execute(stmt)

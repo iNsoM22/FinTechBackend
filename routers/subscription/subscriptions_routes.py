@@ -6,7 +6,7 @@ from validations.accounts import SubscriptionResponse, UpdateSubscriptionRequest
 from sqlalchemy.future import select
 from utils.auth import user_dependency, require_role
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Annotated
 
 
@@ -41,8 +41,15 @@ async def update_subscription(subscription_id: UUID,
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Subscription Not Found")
 
-        for field, value in updated_data.model_dump().items():
-            setattr(subscription, field, value)
+        if updated_data.status is None:
+            raise HTTPException
+
+        subscription.status = updated_data.status
+        if updated_data.status == ValidSubscriptionStatus.CANCELED:
+            subscription.canceled_at = datetime.now(timezone.utc)
+
+        if updated_data.status == ValidSubscriptionStatus.ENDED:
+            subscription.ended_at = datetime.now(timezone.utc)
 
         await db.commit()
         await db.refresh(subscription)
@@ -59,6 +66,8 @@ async def update_subscription(subscription_id: UUID,
 @router.get("/filter", response_model=List[SubscriptionResponse], status_code=status.HTTP_200_OK)
 async def filter_subscriptions(db: db_dependency,
                                current_user: Annotated[dict, Depends(require_role(2))],
+                               limit: int = Query(50, ge=1, le=100),
+                               offset: int = Query(0, ge=0),
                                status: Optional[ValidSubscriptionStatus] = Query(
                                    None),
                                start_date: Optional[datetime] = Query(None),
@@ -77,7 +86,7 @@ async def filter_subscriptions(db: db_dependency,
             if end_date:
                 filters.append(Subscription.ended_at <= end_date)
 
-            stmt = stmt.where(*filters)
+            stmt = stmt.where(*filters).offset(offset).limit(limit)
 
         result = await db.execute(stmt)
         subscriptions = result.scalars().all()
